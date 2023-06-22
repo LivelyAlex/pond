@@ -38,8 +38,8 @@ struct Sprite {
 
 const int PLOUF_TICKS_PER_FRAME = 1;
 int PLOUF_LIFETIME = PLOUF_TICKS_PER_FRAME * 4;
-int PLOUF_CHANCE = 100;
-int NEW_FROG_CHANCE = 200; // 1/NEW_FROG_CHANCE is the actual probability
+int RANDOM_PLOUF_CHANCE = 100;
+int NEW_FROG_CHANCE = 100; // 1/NEW_FROG_CHANCE is the actual probability
 const int FROG_ARRAY_SIZE = 16;
 
 
@@ -81,6 +81,7 @@ struct Frog {
     int urge_to_jump;
     int jumps_in_a_row;
     int jumps_left_to_do; // number of jumps left to do after an urge to jump
+    int time_between_jumps;
     int waiting_for_new_jump; // time between jumps in a row
     int jumping; // 0 = not jumping, 2 = jumping, Y = Y - jump height, 1 = landing
     bool in_water; // when in water, jumps become swims
@@ -271,7 +272,7 @@ void set_up_waterlilies(short terrain[LINES][COLS], struct WaterLily lily_pad_ar
         } while (terrain[y][x] != WATER);
         bool flower = i >= n_waterlilies + 1;
         if (flower)
-            color = MAGENTA;
+            color = rand() % 3 == 0 ? MAGENTA : NORMAL;
         struct WaterLily newLily = {.x = x, .y = y, .color = color, .flower = flower};
         lily_pad_array[i] = newLily;
         if (flower) {
@@ -363,10 +364,10 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                         frog->direction = random_direction();
                     }
                 }
-                frog->urge_to_jump = 1000; // the urge to jump is set later, this is just a hack not to avoid this loop next time
-                frog->waiting_for_new_jump = frog->in_water ? 4 : 8;
+                frog->urge_to_jump = 1000; // the urge to jump is set later, this is just a hack to avoid this loop next time
+                frog->waiting_for_new_jump = frog->in_water ? 4 : frog->time_between_jumps;
                 frog->jumping = 2;
-                if (rand() % 3 < 2) {
+                if (rand() % 3 == 0) {
                     //change of direction
                     bool reverse = rand() % 2 == 0;
                     frog->direction = get_next_direction(frog->direction, reverse);
@@ -376,6 +377,9 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                     // this allows the frog to leap out of the water if the jump ends on land
                     if (frog_predict_landing_tile(terrain, frog->direction, frog->jump_distance, frog->y, frog->x) != WATER) {
                         frog->in_water = false;
+                        if (frog->loves_land) {
+                            frog->jumps_left_to_do = 1;
+                        }
                     }
                 }
             }
@@ -403,17 +407,12 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                         is_index_free[i] = true;
                         continue;
                     }
-                    bool was_in_water = frog->in_water;
                     
                     if(get_terrain(terrain, frog->y, frog->x) == WATER) {
                         frog->in_water = true;
                         addPlouf(frog->x, frog->y);
                     } else {
                         frog->in_water = false;
-                    }
-
-                    if (frog->loves_land && was_in_water && !frog->in_water) {
-                        frog->jumps_left_to_do = 0;
                     }
 
                     frog->jumps_left_to_do--;
@@ -496,6 +495,7 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 .urge_to_croak = croakiness,
                 .urge_to_jump = jumpiness,
                 .jumps_in_a_row = 2 + rand() % 4,
+                .time_between_jumps = 2 + rand() % 6,
                 .jumping = 0,
                 .jump_distance = 2,
                 .jump_height = 3,
@@ -513,8 +513,8 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
     return -1;
 }
 
-void tick_frog_spawner(struct Frog frog_array[], bool is_index_free[]) {
-    if (rand() % NEW_FROG_CHANCE == 0) {
+void tick_frog_spawner(struct Frog frog_array[], bool is_index_free[], bool force_spawn) {
+    if (force_spawn || (rand() % NEW_FROG_CHANCE == 0)) {
         short direction;
         int x = rand() % COLS;
         int y = rand() % LINES;
@@ -541,12 +541,15 @@ void tick_frog_spawner(struct Frog frog_array[], bool is_index_free[]) {
 
         int i = spawn_frog(frog_array, is_index_free, y, x, direction);
         if (i != -1) {
-            frog_array[i].urge_to_jump = 0; // so that spawned frog swim immediately
+            frog_array[i].urge_to_jump = 50; // so that spawned frog swims 5s after spawning (not 0 so that it doesnt spawn right after a panic and looks silly
+            frog_array[i].in_water = true;
         }
     }
 }
 
 int main(int argc, char* argv[]) {
+    int pause_ms = 100;
+    bool debug = false;
     srand(time(NULL));
     //curses inits
     setlocale(LC_ALL, "");
@@ -556,6 +559,8 @@ int main(int argc, char* argv[]) {
     curs_set(0);
     nodelay(stdscr, true); // non blocking wait for char
     start_color();
+    // to make the frogs run when we click on screen
+    mousemask(BUTTON1_PRESSED | BUTTON2_PRESSED, NULL);
 
     init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
     init_pair(YELLOW, COLOR_YELLOW, COLOR_BLACK);
@@ -567,6 +572,15 @@ int main(int argc, char* argv[]) {
     WINDOW* win = stdscr;
 
     // my inits
+    bool rain = rand() % 5 == 0;
+    bool flower_season = rand() % 2 == 0;
+
+    if (rain) {
+        RANDOM_PLOUF_CHANCE = 1;
+        NEW_FROG_CHANCE /= 2;
+    }
+
+
     short terrain[LINES][COLS];
     for (int i = 0; i < COLS * LINES; i++) {
         terrain[0][i] = WATER;
@@ -578,7 +592,7 @@ int main(int argc, char* argv[]) {
 
     // waterlilies leaves
     int n_lily_pad_leaves = LILYPAD_DENSITY * (COLS * LINES);
-    int n_lily_flowers = FLOWER_DENSITY * (COLS * LINES);
+    int n_lily_flowers = flower_season ? FLOWER_DENSITY * (COLS * LINES) : 0;
     if (n_lily_flowers == 0)
         n_lily_flowers = 1;
     struct WaterLily lily_pad_array[n_lily_pad_leaves + n_lily_flowers];
@@ -596,14 +610,22 @@ int main(int argc, char* argv[]) {
     spawn_frog(frog_array, is_frog_array_index_free, LINES + DEATH_ZONE, rand() % COLS, UP);
 
     bool quit = false;
+    int last_panic = 0;
 
     while (!quit) {
-        wattron(win, COLOR_PAIR(NORMAL));
-        wclear(win);
+        last_panic--;
+        int frog_count = 0;
+        for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
+            if (!is_frog_array_index_free[i])
+                frog_count ++;
+        }
 
-        tick_frog_spawner(frog_array, is_frog_array_index_free);
+        wattron(win, COLOR_PAIR(NORMAL));
+        werase(win);
+
+        tick_frog_spawner(frog_array, is_frog_array_index_free, frog_count == 0);
         // fish catching little insects on the surface of the water
-        if (rand() % PLOUF_CHANCE == 0) {
+        if (rand() % RANDOM_PLOUF_CHANCE == 0) {
             move(0,0);
             int y = rand() % LINES;
             int x = rand() % COLS;
@@ -630,15 +652,53 @@ int main(int argc, char* argv[]) {
         tick_frog(win, terrain, frog_array, is_frog_array_index_free);
         wattroff(win, A_BOLD);
 
-        wrefresh(win);
+        //debug
+        if (debug) {
+            wattron(win, COLOR_PAIR(NORMAL));
+            wmove(win, 0, 0);
+            waddch(win, (frog_count / 10) + 0x30);
+            waddch(win, (frog_count % 10) + 0x30);
+        }
 
+        wrefresh(win);
+        int ch = getch();
+        if (ch != ERR) {
+            if (last_panic <= 0) {
+                for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
+                    if (!is_frog_array_index_free[i]) {
+                        frog_array[i].jumping = 2;
+                        frog_array[i].jumps_left_to_do = 8;
+                        frog_array[i].loves_land = false;
+                        short direction = 0;
+
+                        int x = frog_array[i].x;
+                        int y = frog_array[i].y;
+
+                        int cols_third = COLS / 3;
+                        int lines_third = LINES / 3;
+
+                        direction += x < cols_third ? LEFT : x > 2 * cols_third ? RIGHT : 0;
+                        direction += y < lines_third ? UP : y > 2 * lines_third ? DOWN : 0;
+                        if (direction != 0) {
+                            frog_array[i].direction = direction;
+                        }
+
+                    }
+                }
+                last_panic = 30;
+            }
+        }
+        
+        if (ch == 'q' || ch == 'Q')
+            quit = true;
+
+        while (getch() != ERR) {} //empty buffer (bc clicks fill the buffer and block exiting for a while)
+        
         struct timespec ts;
         ts.tv_sec = 0;
-        ts.tv_nsec = 100000000;
+        ts.tv_nsec = pause_ms * 1000000;
         nanosleep(&ts, NULL);
 
-        if (getch() == 'q' || getch() == 'Q')
-            quit = true;
     }
 
     endwin();
