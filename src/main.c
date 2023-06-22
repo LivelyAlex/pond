@@ -67,6 +67,7 @@ struct WaterLily {
 struct Frog {
     int x, y;
     short color;
+    char eyes;
     short direction;
     int jumpiness; // general tendency of that frog to jump around
     int jump_distance; // will be applied twice, so it's really the half jump distance
@@ -164,7 +165,8 @@ char* frog_croak = "\
 char* frog_swimming = "\n  o_o";
 char* from_swimming_blinking = "\n  -_-";
 
-
+char alternate_eyes[] = {'0', '@', '^', 'T', '.'};
+int alternate_eyes_size = 5;
 /*struct Sprite loadSprite(char filename[]) {
     FILE* fptr;
     fptr = fopen(filename, "r");
@@ -197,7 +199,8 @@ void addPlouf(int x, int y) {
    }
 }
 
-void render_str(WINDOW* win, char* str, int Y, int X, int center_y, int center_x, bool transparent) {
+//'eye character' will replace all 'o's
+void render_str(WINDOW* win, char* str, int Y, int X, int center_y, int center_x, bool transparent, char eye_character) {
     int i = 0;
     int x = X - center_x;
     int y = Y - center_y;
@@ -221,7 +224,11 @@ void render_str(WINDOW* win, char* str, int Y, int X, int center_y, int center_x
                 }
 
                 if (!skip) {
-                    waddch(win, str[i]);
+                    if (str[i] == 'o') {
+                        waddch(win, eye_character);
+                    } else {
+                        waddch(win, str[i]);
+                    }
                 }
             }
             x ++;
@@ -453,7 +460,7 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
 
            
             wattron(win, A_BOLD | COLOR_PAIR(frog->color));
-            render_str(win, *str_to_render, y, frog->x, 1, 2, false);
+            render_str(win, *str_to_render, y, frog->x, 1, 2, false, frog->eyes);
             
         }
     }
@@ -473,7 +480,7 @@ void tickPlouf(WINDOW* win) {
                 plouf->ticksUntilNextFrame = PLOUF_TICKS_PER_FRAME;
                 plouf->currentFrame++;
             }
-            render_str(win, PLOUF_SPRITE.frameBuffer[plouf->currentFrame], plouf->y, plouf->x, 2, 7, true);
+            render_str(win, PLOUF_SPRITE.frameBuffer[plouf->currentFrame], plouf->y, plouf->x, 2, 7, true, 'o');
         }
     }
 }
@@ -482,12 +489,17 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
     for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
         if (isIndexFree[i]) {
             short color = rand() % 3 < 2 ? GREEN : rand() % 5 == 0 ? RED : YELLOW;
+            char eyes = 'o';
+            if (rand()% 20 == 0) {
+                eyes = alternate_eyes[rand() % alternate_eyes_size];            
+            }
             int jumpiness = 30 + rand() % 200;
             int croakiness = 10 + rand() % 50;
             struct Frog frog = {
                 .x = x,
                 .y = y,
                 .color = color,
+                .eyes = eyes,
                 .direction = direction,
                 .eye_wetness = 5 + rand() % 20,
                 .croakiness = croakiness,
@@ -643,7 +655,7 @@ int main(int argc, char* argv[]) {
             if (lily_pad->flower)
                 wattron(win, A_BOLD);
 
-            render_str(win, lily_pad->flower ? waterlily_flower_small : lily_pad_leaf_ascii_new, lily_pad->y, lily_pad->x, lily_pad_leaf_offset_y, lily_pad_leaf_offset_x, true);
+            render_str(win, lily_pad->flower ? waterlily_flower_small : lily_pad_leaf_ascii_new, lily_pad->y, lily_pad->x, lily_pad_leaf_offset_y, lily_pad_leaf_offset_x, true, 'o');
             wattroff(win, COLOR_PAIR(lily_pad->color));
             if (lily_pad -> flower)
                 wattroff(win, A_BOLD);
