@@ -25,7 +25,7 @@
 
 #define PLOUF_ARRAY_LENGTH 16
 #define LILYPAD_DENSITY    0.005
-#define FLOWER_DENSITY     0.001
+#define FLOWER_DENSITY     0.002
 #define FISH_DENSITY       0.01
 #define DEATH_ZONE         10 // after that many characters offscreen, KILL the entity
 
@@ -59,6 +59,7 @@ struct WaterLily {
     int x;
     int y;
     short color;
+    bool flower;
     bool orientation; //true = V
     bool flipped;
 };
@@ -260,17 +261,24 @@ void fill_terrain_with(short terrain[LINES][COLS], char* str, short type, int Y,
     }
 }
 
-void set_up_waterlilies(short terrain[LINES][COLS], struct WaterLily lily_pad_array[], int n_waterlilies) {
-    for (int i = 0; i < n_waterlilies; i++) {
+void set_up_waterlilies(short terrain[LINES][COLS], struct WaterLily lily_pad_array[], int n_waterlilies, int n_lily_flowers) {
+    for (int i = 0; i < n_waterlilies + n_lily_flowers; i++) {
         short color = GREEN; //rand() % 3 == 0 ? YELLOW : GREEN;
         int x, y;
         do {
             y = rand() % LINES;
             x = rand() % COLS;
         } while (terrain[y][x] != WATER);
-        struct WaterLily newLily = {.x = x, .y = y, .color = color};
+        bool flower = i >= n_waterlilies + 1;
+        if (flower)
+            color = MAGENTA;
+        struct WaterLily newLily = {.x = x, .y = y, .color = color, .flower = flower};
         lily_pad_array[i] = newLily;
-        fill_terrain_with(terrain, lily_pad_leaf_ascii_new, PAD, y, x, lily_pad_leaf_offset_y, lily_pad_leaf_offset_x, false);
+        if (flower) {
+            fill_terrain_with(terrain, waterlily_flower_small, FLOWER, y, x, lily_pad_leaf_offset_y, lily_pad_leaf_offset_x, false);
+        } else {
+            fill_terrain_with(terrain, lily_pad_leaf_ascii_new, PAD, y, x, lily_pad_leaf_offset_y, lily_pad_leaf_offset_x, false);
+        }
     }
 }
 
@@ -474,7 +482,7 @@ void tickPlouf(WINDOW* win) {
 int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short direction) {
     for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
         if (isIndexFree[i]) {
-            short color = rand() % 3 < 2 ? GREEN : rand() % 3 == 0 ? RED : YELLOW;
+            short color = rand() % 3 < 2 ? GREEN : rand() % 5 == 0 ? RED : YELLOW;
             int jumpiness = 30 + rand() % 200;
             int croakiness = 10 + rand() % 50;
             struct Frog frog = {
@@ -570,8 +578,12 @@ int main(int argc, char* argv[]) {
 
     // waterlilies leaves
     int n_lily_pad_leaves = LILYPAD_DENSITY * (COLS * LINES);
-    struct WaterLily lily_pad_array[n_lily_pad_leaves];
-    set_up_waterlilies(terrain, lily_pad_array, n_lily_pad_leaves);
+    int n_lily_flowers = FLOWER_DENSITY * (COLS * LINES);
+    if (n_lily_flowers == 0)
+        n_lily_flowers = 1;
+    struct WaterLily lily_pad_array[n_lily_pad_leaves + n_lily_flowers];
+    set_up_waterlilies(terrain, lily_pad_array, n_lily_pad_leaves, n_lily_flowers);
+
 
     //frogs !!!!
     struct Frog frog_array[FROG_ARRAY_SIZE];
@@ -602,18 +614,21 @@ int main(int argc, char* argv[]) {
         tickPlouf(win);
 
         // render waterlilies
-        for (int i = 0; i < n_lily_pad_leaves; i++) {
+        for (int i = 0; i < n_lily_pad_leaves + n_lily_flowers; i++) {
             struct WaterLily* lily_pad = &lily_pad_array[i];
             //wattron(win, waterLily->color);
             wattron(win, COLOR_PAIR(lily_pad->color));
-            render_str(win, lily_pad_leaf_ascii_new, lily_pad->y, lily_pad->x, lily_pad_leaf_offset_y, lily_pad_leaf_offset_x, true);
+            if (lily_pad->flower)
+                wattron(win, A_BOLD);
+
+            render_str(win, lily_pad->flower ? waterlily_flower_small : lily_pad_leaf_ascii_new, lily_pad->y, lily_pad->x, lily_pad_leaf_offset_y, lily_pad_leaf_offset_x, true);
             wattroff(win, COLOR_PAIR(lily_pad->color));
+            if (lily_pad -> flower)
+                wattroff(win, A_BOLD);
             //wattron(win, COLOR_PAIR(0));
         }
-        wattron(win, A_BOLD | COLOR_PAIR(MAGENTA));
-        render_str(win, waterlily_flower_small, 7, 20, 4, 7, true);
         tick_frog(win, terrain, frog_array, is_frog_array_index_free);
-        wattroff(win, A_BOLD); 
+        wattroff(win, A_BOLD);
 
         wrefresh(win);
 
@@ -627,7 +642,7 @@ int main(int argc, char* argv[]) {
     }
 
     endwin();
-/*    for (int j = 0; j < LINES; j++) {
+    /*for (int j = 0; j < LINES; j++) {
         for (int i = 0; i < COLS; i++) {
             printf("%d", terrain[j][i]);
         }
