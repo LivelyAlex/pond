@@ -28,7 +28,7 @@
 #define LILYPAD_DENSITY    0.005
 #define FLOWER_DENSITY     0.002
 #define FISH_DENSITY       0.01
-#define DEATH_ZONE         10 // after that many characters offscreen, KILL the entity
+#define DEATH_ZONE         8 // after that many characters offscreen, KILL the entity
 
 void print_help() {
     printf("The best ascii pond simulator utility\n");
@@ -272,7 +272,7 @@ uint calculate_coolness_score(struct Frog* frog) {
         color_score += 2;
 
     if (frog->eyes != 'o')
-        eye_score = 11;
+        eye_score = 13;
     if (frog->mouth != '_')
         mouth_score = 10;
     if (frog->sides[0] != '(')
@@ -636,11 +636,11 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 mouth = alternate_mouths[rand() % alternate_mouths_size];
             }
             char* sides = "()";
-            if (rand() % 30 == 0) {
+            if (rand() % 40 == 0) {
                 sides = alternate_sides[rand() % alternate_sides_size];
             }
             int jumpiness = 30 + rand() % 200;
-            int croakiness = 10 + rand() % 50;
+            int croakiness = 10 + rand() % 60;
             struct Frog frog = {
                 .x = x,
                 .y = y,
@@ -946,10 +946,10 @@ int main(int argc, char* argv[]) {
         if (coolest_frog.color == GREEN) {
             color_str = "green. That seems to be the most common color!";
 
-        } if (coolest_frog.color == YELLOW) {
+        } else if (coolest_frog.color == YELLOW) {
             color_str = "a pale yellow. I wonder if it's toxic?";
         } else {
-            color_str = "red! That's a rare color. I'm definitely not touching it!";
+            color_str = "red! That's a rare color.";
         }
 
         // i'm tired so that's how i'm displaying my frog don't @ me
@@ -1009,7 +1009,7 @@ int main(int argc, char* argv[]) {
                     printf("It's not that noticeable, but's it's a bit higher than usual!\n");
                     break;
                 case 'w':
-                    printf("I'm not really sure how to interpret that one...\n"); // I'm too old
+                    printf("I'm not really sure how to interpret it...\n"); // I'm too old
                                                                                             break;
                 default:
                     printf("I've never seen anything like it..\n");
@@ -1029,33 +1029,41 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        printf("Here is a little something I noticed from my observation:\n");
-        int trivia = rand() % 4;
+        printf("Here is a little something I noticed about this frog:\n");
+        int trivia = rand() % 5;
         switch(trivia) {
             case 0:
-                printf("This frog usually jumped %d times in a row.\n", coolest_frog.jumps_in_a_row);
+                printf("It usually jumped %d times in a row.\n", coolest_frog.jumps_in_a_row);
                 break;
             case 1:
                 if (coolest_frog.stubborn) {
-                    printf("This frog was very stubborn. Most frogs are.\n");
+                    printf("It was very stubborn. Most frogs are.\n");
                 } else {
-                    printf("This frog was not stubborn at all! That's not common.\n");
+                    printf("It was not stubborn at all! That's not common.\n");
                 }
                 break;
             case 2:
                 if (coolest_frog.loves_land) {
-                    printf("This frog preferred to be on the ground than in water!\n");
+                    printf("It prefers to be on the ground than in water!\n");
                 } else {
-                    printf("This frog loved to swim!\n");
+                    printf("It loved to swim!\n");
                 }
                 break;
             case 3:
-                if (coolest_frog.croakiness < 50) {
-                    printf("This frog could not stop croaking!\n");
+                if (coolest_frog.croakiness < 30) {
+                    printf("It could not stop croaking!\n");
                 } else {
-                    printf("This frog was very quiet.\n");
+                    printf("It was very quiet.\n");
                 }
                 break;
+            case 4:
+                if (coolest_frog.blinkiness < 10) {
+                    printf("It was blinking a lot!\n");
+                } else if (coolest_frog.blinkiness > 20) {
+                    printf("It almost never blinked..\n");
+                } else {
+                    printf("The blinking frequency of that frog was perfectly average!\n");
+                }
         }
 
     }
