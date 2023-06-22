@@ -912,11 +912,11 @@ int main(int argc, char* argv[]) {
             printf("That's a lot of frogs! I wonder how many there is...\n");
         } else if (FROGS_SPAWNED < 200) {
             printf("I spent the whole day observing them.\nI had no idea such a little pond could contain so many frogs!\n");
-            rain ? printf("I might have catched a cold now...\nI'm gonna make myself a nice hot chocolate when i get home!\n") : 0 + 0;
+            rain ? printf("I might have catched a cold...\n") : 0 + 0;
         } else {
             printf("Finally! After observing frogs for so long, I have completed my PhD on frogs!\n");
             if (rain) {
-                printf("*You hold a soaked piece of paper that once was your PhD, but it has become\nillegible... You should consider coming back when it's not raining.*");
+                printf("*You hold a soaked piece of paper that once was your PhD, but it has become\nillegible... You consider coming back when it's not raining.*");
             } else {
                 printf("*You hold the final page of you PhD; on it, one can read:\nConclusion: frogs are cute. You are correct.*");
             }
