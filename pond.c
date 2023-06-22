@@ -155,6 +155,12 @@ struct Frog {
     bool stubborn; // always keeps the same general direction
     bool loves_land; // always stops when landing on land
     uint coolness_score;
+    // maybe add time_alive, and calculate the score at despawn.
+    // that means we also have to compare the not-yet-despawn frogs
+    // at the end to the coolest frog.
+    //
+    // but i like the idea because a frog that sticks around for longer
+    // has more chance getting spotted by the player who could recognize it in the end text
 };
 
 struct Frog coolest_frog = {
@@ -904,14 +910,14 @@ int main(int argc, char* argv[]) {
         char* weather = rain ? "rainy" : "nice";
         char* flower_opt = flower_season ? ", the lily pads were flowering!" : ".";
         printf("That was a %s day at the pond%s\n", weather, flower_opt);
-        printf("%d unique frogs came to visit today!\n", FROGS_SPAWNED);
+        printf("%d unique frogs came to visit!\n", FROGS_SPAWNED);
         if (FROGS_SPAWNED < 20) {
             printf("That's not a lot, but I didn't stay for long either.\n");
             rain ? printf("I was starting to get soaked!\n") : 0 + 0;
         } else if (FROGS_SPAWNED < 50) {
             printf("That's a lot of frogs! I wonder how many there is...\n");
         } else if (FROGS_SPAWNED < 200) {
-            printf("I spent the whole day observing them.\nI had no idea such a little pond could contain so many frogs!\n");
+            printf("I had no idea such a little pond could contain so many frogs!\n");
             rain ? printf("I might have catched a cold...\n") : 0 + 0;
         } else {
             printf("Finally! After observing frogs for so long, I have completed my PhD on frogs!\n");
@@ -1000,7 +1006,7 @@ int main(int argc, char* argv[]) {
             }
         }
         if (coolest_frog.mouth != '_') {
-            printf("This mouth is unusual...\n");
+            printf("This mouth is unusual..\n");
             switch (coolest_frog.mouth) {
                 case '~':
                     printf("It seems that frog is really confused!\n");
@@ -1009,7 +1015,7 @@ int main(int argc, char* argv[]) {
                     printf("It's not that noticeable, but's it's a bit higher than usual!\n");
                     break;
                 case 'w':
-                    printf("I'm not really sure how to interpret it...\n"); // I'm too old
+                    printf("I'm not really sure how to interpret it..\n"); // I'm too old
                                                                                             break;
                 default:
                     printf("I've never seen anything like it..\n");
