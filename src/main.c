@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <locale.h>
 
+#define SIN_PI_OVER_4 0.7
+
 #define GREEN   1
 #define YELLOW  2
 #define NORMAL  3
@@ -17,14 +19,16 @@
 #define UP      0b0100
 #define DOWN    0b1000
 
-#define WATER   1
-#define PAD     2
-#define FLOWER  3
+#define WATER   0
+#define PAD     1
+#define FLOWER  2
 
 #define PLOUF_ARRAY_LENGTH 16
 #define LILYPAD_DENSITY    0.003
 #define FLOWER_DENSITY     0.001
 #define FISH_DENSITY       0.01
+#define DEATH_ZONE         20 // after that many characters offscreen, KILL the entity
+
 struct Sprite {
     uint   height;
     uint   width;
@@ -35,7 +39,8 @@ struct Sprite {
 const int PLOUF_TICKS_PER_FRAME = 1;
 int PLOUF_LIFETIME = PLOUF_TICKS_PER_FRAME * 4;
 int PLOUF_CHANCE = 100;
-const int FROG_ARRAY_SIZE = 8;
+int NEW_FROG_CHANCE = 300; // 1/NEW_FROG_CHANCE is the actual probability
+const int FROG_ARRAY_SIZE = 16;
 
 
 struct Plouf {
@@ -64,6 +69,7 @@ struct Frog {
     short direction;
     int jumpiness; // general tendency of that frog to jump around
     int jump_distance; // will be applied twice, so it's really the half jump distance
+    int swim_distance;
     int jump_height;
     int croakiness; // you can guess
     int blinkiness;
@@ -71,9 +77,12 @@ struct Frog {
     int urge_to_croak;
     int croak; // ticks left till croak end 0 = not croaking
     int urge_to_jump;
+    int jumps_in_a_row;
+    int jumps_left_to_do; // number of jumps left to do after an urge to jump
+    int waiting_for_new_jump; // time between jumps in a row
     int jumping; // 0 = not jumping, 2 = jumping, Y = Y - jump height, 1 = landing
     int height;
-    bool swimming;
+    bool in_water; // when in water, jumps become swims
 };
 
 struct Sprite PLOUF_SPRITE = {
@@ -263,45 +272,140 @@ void set_up_waterlilies(short terrain[LINES][COLS], struct WaterLily lily_pad_ar
     }
 }
 
+short get_terrain(short terrain[LINES][COLS], int y, int x) {
+    if ((y < 0) || (y > LINES) || (x < 0) || (x > COLS)) {
+        return WATER;
+    }
+
+    return terrain[y][x];
+}
+
+short random_direction() {
+    switch (rand() % 4) {
+        case 0: // Y axis
+            return ((rand() % 2 == 0) ? UP : DOWN);
+        case 1: // X axis
+            return rand() % 2 == 0 ? LEFT : RIGHT;
+        default: //both (twice as likely)
+            return (rand() % 2 == 0 ? UP : DOWN) | (rand() % 2 == 0 ? LEFT : RIGHT);
+    }
+}
+
+// gets the next clockwise direction; anti clockwise if reverse = true
+short get_next_direction(short direction, bool reverse) {
+    if (direction == UP) {
+        return reverse ? UP | LEFT : UP | RIGHT;
+    } else if (direction == (UP | RIGHT)) {
+        return reverse ? UP : RIGHT;
+    } else if (direction == RIGHT) {
+        return reverse ? UP | RIGHT : DOWN | RIGHT;
+    } else if (direction == (DOWN | RIGHT)) {
+        return reverse ? RIGHT : DOWN;
+    } else if (direction == DOWN) {
+        return reverse ? DOWN | RIGHT : DOWN | LEFT;
+    } else if (direction == (DOWN | LEFT)) {
+        return reverse ? DOWN : LEFT;
+    } else if (direction == LEFT) {
+        return reverse ? DOWN | LEFT : UP | LEFT;
+    } else if (direction == (UP | LEFT)) {
+        return reverse ? LEFT : UP;
+    } else {
+        return LEFT; // frogs are left-leaning
+    }
+}
+
+
+// this can move a lot of other things than frogs, too!
+void frog_move(short direction, int distance, int* y, int* x) {
+    float x_direction_multiplier = (direction & 0b11) == RIGHT ? 1 : (direction & 0b11) == LEFT ? -1 : 0;
+    float y_direction_multiplier = (direction & 0b1100) == DOWN ? 1 : (direction & 0b1100) == UP ? -1 : 0;
+
+    if (x_direction_multiplier != 0 && y_direction_multiplier != 0) {
+        x_direction_multiplier *= SIN_PI_OVER_4;
+        y_direction_multiplier *= SIN_PI_OVER_4;
+    }
+
+    *x += distance * x_direction_multiplier;
+    *y += distance * y_direction_multiplier;
+}
+
+short frog_predict_landing_tile(short terrain[LINES][COLS], short direction, short distance, int y, int x) {
+    int _x = x;
+    int _y = y;
+    frog_move(direction, distance, &_y, &_x); 
+    frog_move(direction, distance, &_y, &_x); 
+    return get_terrain(terrain, _y, _x);
+}
+
 void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frogArray[], bool isIndexFree[]) {
     for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
         if (!isIndexFree[i]) {
             struct Frog* frog = &frogArray[i];
             bool blinking = false;
             frog->urge_to_jump--;
-            if (frog->urge_to_jump <= 0) {
+            frog->waiting_for_new_jump--;
+            // initial jump
+            if (frog->urge_to_jump <= 0 || (frog->jumps_left_to_do > 0 && frog->waiting_for_new_jump <= 0)) {
+
+                if (frog->urge_to_jump <= 0) {
+                    frog->jumps_left_to_do = 3;
+                    // random direction here ? could be fun
+                }
+                frog->urge_to_jump = 1000; // the urge to jump is set later, this is just a hack not to avoid this loop next time
+                frog->waiting_for_new_jump = frog->in_water ? 4 : 8;
                 frog->jumping = 2;
-                frog->urge_to_jump = frog->jumpiness;
-                //here, do change direction later.
-                //a chance to stay on course, a chance to chose an adjacent direction
-                //short next_direction(current, flip); flip = true : we go one to the left instead of one to the right
+                if (rand() % 3 < 2) {
+                    //change of direction
+                    bool reverse = rand() % 2 == 0;
+                    frog->direction = get_next_direction(frog->direction, reverse);
+                }
+                if (frog->in_water) {
+                    addPlouf(frog->x, frog->y);
+                    // this allows the frog to leap out of the water if the jump ends on land
+                    if (frog_predict_landing_tile(terrain, frog->direction, frog->jump_distance, frog->y, frog->x) != WATER) {
+                        frog->in_water = false;
+                    }
+                }
             }
 
             int y = frog->y; // in a variable bc we might want to alter it for the jump, and not alter frog.y
-            char** str_to_render;
+            char* default_str = "";
+            char** str_to_render = &default_str; 
             if (frog->jumping > 0) {
-                int x_direction_multiplier = (frog->direction & 0b11) == RIGHT ? 1 : (frog->direction & 0b11) == LEFT ? -1 : 0;
-                int y_direction_multiplier = (frog->direction & 0b1100) == DOWN ? 1 : (frog->direction & 0b1100) == UP ? -1 : 0;
-                frog->x += frog->jump_distance * x_direction_multiplier;
-                frog->y += frog->jump_distance * y_direction_multiplier;
+                frog_move(frog->direction, frog->jump_distance, &frog->y, &frog->x);
                 y = frog->y;
+
+                // first tick of the jump
                 if (frog->jumping == 2) {
-                    y -= frog->jump_height;
+                    if (!frog->in_water) {
+                        y -= frog->jump_height;
+                    }
                 }
 
-                str_to_render = &ascii_frog;
                 frog->jumping--;
 
                 // landing
                 if (frog->jumping == 0) {
-                    if(terrain[frog->y][frog->x] == WATER) {
-                        frog->swimming = true;
+                    if(get_terrain(terrain, frog->y, frog->x) == WATER) {
+                        frog->in_water = true;
                         addPlouf(frog->x, frog->y);
                     } else {
-                        frog->swimming = false;
+                        frog->in_water = false;
+                    }
+                    frog->jumps_left_to_do--;
+                    // last landing of this jump series
+                    if (frog->jumps_left_to_do <= 0) {
+                        if (frog->in_water) {
+                            frog->urge_to_jump = 30; // when in water, doesn't stay as long
+                        } else {
+                            frog->urge_to_jump = frog->jumpiness;
+                        }
                     }
                 }
-            } else {// the jump cancels everything that comes afterwards
+                if (!frog->in_water) { 
+                    str_to_render = &ascii_frog;
+                }
+            } else {// non-jumping frog
                 frog->eye_wetness--;
                 if (frog->eye_wetness <= 0) {
                     frog->eye_wetness = rand() % 50 + 10;
@@ -316,9 +420,10 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frogArray[],
                 else {
                     frog->urge_to_croak--;
                 }
-                if (!frog->swimming)
+                if (!frog->in_water) {
                     str_to_render = frog->croak > 0 ? &frog_croak : blinking ? &frog_blink : &ascii_frog;
-                else {
+                } else if (!(frog->waiting_for_new_jump > 0)) {
+                    // if the frog is swimming, we don't display its cute eyes until it has stopped swimming (swimming = jumping when underwater
                     str_to_render = blinking ? &from_swimming_blinking : &frog_swimming;
                 }
             }
@@ -350,30 +455,63 @@ void tickPlouf(WINDOW* win) {
     }
 }
 
-void spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x) {
+void spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short direction) {
     for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
         if (isIndexFree[i]) {
             short color = rand() % 2 == 0 ? GREEN : rand() % 3 == 0 ? RED : YELLOW;
-            int jumpiness = 20 + rand() % 200;
+            int jumpiness = 30 + rand() % 200;
+            int croakiness = 10 + rand() % 100;
             struct Frog frog = {
                 .x = x,
                 .y = y,
                 .color = color,
-                .direction = LEFT,
+                .direction = direction,
                 .eye_wetness = 20,
-                .urge_to_croak = 50,
+                .croakiness = croakiness,
+                .urge_to_croak = croakiness,
                 .urge_to_jump = jumpiness,
+                .jumps_in_a_row = 2 + rand() % 3,
                 .jumping = 0,
                 .jump_distance = 3,
                 .jump_height = 3,
                 .jumpiness = jumpiness,
                 .croak = 0,
-                .swimming = false,
+                .in_water = false,
             };
             frogArray[i] = frog;
             isIndexFree[i] = false;
             return;
         }
+    }
+}
+
+void tick_frog_spawner(struct Frog frog_array[], bool is_index_free[]) {
+    if (rand() % NEW_FROG_CHANCE == 0) {
+        short direction;
+        int x = rand() % COLS;
+        int y = rand() % LINES;
+
+
+        switch(rand() % 4) {
+            case 0:
+                x = -DEATH_ZONE; // distance from edge of screen is death zone
+                direction = RIGHT;
+                break;
+            case 1:
+                x = COLS + DEATH_ZONE;
+                direction = LEFT;
+                break;
+            case 2:
+                y = - DEATH_ZONE;
+                direction = DOWN;
+                break;
+            case 3: 
+                y = LINES + DEATH_ZONE;
+                direction = UP;
+                break;
+        }
+
+        spawn_frog(frog_array, is_index_free, y, x, direction);
     }
 }
 
@@ -418,7 +556,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
         is_frog_array_index_free[i] = true;
     }
-    spawn_frog(frog_array, is_frog_array_index_free, lily_pad_array[0].y, lily_pad_array[0].x);
+    spawn_frog(frog_array, is_frog_array_index_free, lily_pad_array[0].y, lily_pad_array[0].x, LEFT);
 
     bool quit = false;
 
@@ -426,6 +564,7 @@ int main(int argc, char* argv[]) {
         wattron(win, COLOR_PAIR(NORMAL));
         wclear(win);
 
+        tick_frog_spawner(frog_array, is_frog_array_index_free);
         // fish catching little insects on the surface of the water
         if (rand() % PLOUF_CHANCE == 0) {
             move(0,0);
