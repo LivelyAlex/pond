@@ -87,7 +87,7 @@ void parse_args(int argc, char** argv) {
             OPTION_QUIET = true;
         } else {
             printf("Unknown option : \"%s\". Try pond -h for help\n", str);
-            printf("(Note: some options aren't implemented yet)");
+            printf("(Note: some options aren't implemented yet)\n");
             exit(-1);
         }
     }
@@ -248,8 +248,8 @@ int alternate_eyes_size = 10;
 char alternate_mouths[] = {'~', 'w', '-'};
 int alternate_mouths_size = 3;
 
-char* alternate_sides[] = {"[]", "{}"};
-int alternate_sides_size = 2;
+char* alternate_sides[] = {"[]", "{}", "/\\"};
+int alternate_sides_size = 3;
 /*struct Sprite loadSprite(char filename[]) {
     FILE* fptr;
     fptr = fopen(filename, "r");
@@ -634,7 +634,7 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
         if (isIndexFree[i]) {
             short color = rand() % 3 < 2 ? GREEN : rand() % 5 == 0 ? RED : YELLOW;
             char eyes = 'o';
-            if (rand()% 20 == 0) {
+            if (rand()% 15 == 0) {
                 eyes = alternate_eyes[rand() % alternate_eyes_size];            
             }
             char mouth = '_';
@@ -642,11 +642,12 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 mouth = alternate_mouths[rand() % alternate_mouths_size];
             }
             char* sides = "()";
-            if (rand() % 40 == 0) {
+            if (rand() % 30 == 0) {
                 sides = alternate_sides[rand() % alternate_sides_size];
             }
             int jumpiness = 30 + rand() % 200;
             int croakiness = 10 + rand() % 60;
+            int blinkiness = 5 + rand() % 20;
             struct Frog frog = {
                 .x = x,
                 .y = y,
@@ -655,7 +656,8 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 .mouth = mouth,
                 .sides = sides,
                 .direction = direction,
-                .eye_wetness = 5 + rand() % 20,
+                .eye_wetness = blinkiness,
+                .blinkiness = blinkiness,
                 .croakiness = croakiness,
                 .swimminess = 3 + rand() % 20,
                 .urge_to_croak = croakiness,
@@ -915,16 +917,19 @@ int main(int argc, char* argv[]) {
             printf("That's not a lot, but I didn't stay for long either.\n");
             rain ? printf("I was starting to get soaked!\n") : 0 + 0;
         } else if (FROGS_SPAWNED < 50) {
-            printf("That's a lot of frogs! I wonder how many there is...\n");
+            printf("That's a lot of frogs! I wonder how many more there is..\n");
         } else if (FROGS_SPAWNED < 200) {
-            printf("I had no idea such a little pond could contain so many frogs!\n");
-            rain ? printf("I might have catched a cold...\n") : 0 + 0;
+            if (rain) {
+                printf("I might have catched a cold..\n");
+            } else {
+                printf("I had no idea such a little pond could contain so many frogs..\n");
+            }
         } else {
             printf("Finally! After observing frogs for so long, I have completed my PhD on frogs!\n");
             if (rain) {
                 printf("*You hold a soaked piece of paper that once was your PhD, but it has become\nillegible... You consider coming back when it's not raining.*");
             } else {
-                printf("*You hold the final page of you PhD; on it, one can read:\nConclusion: frogs are cute. You are correct.*");
+                printf("*You hold the last page of you PhD; its final conclusion is that frogs are\ncute. You are correct.*");
             }
         }
         printf("Anyway, here is the coolest frog I saw today:\n");
@@ -1029,6 +1034,9 @@ int main(int argc, char* argv[]) {
                     break;
                 case '[':
                     printf("It looks super boxy. Is that a robot frog??..\n");
+                    break;
+                case '/':
+                    printf("It was very triangular. Kind of reminds me of a famous vilain..\n");
                     break;
                 default:
                     printf("I've never seen anything like it..\n");
