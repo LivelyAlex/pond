@@ -31,29 +31,30 @@
 #define DEATH_ZONE         8 // after that many characters offscreen, KILL the entity
 
 void print_help() {
-    printf("The best ascii pond simulator utility\n");
-    printf("\n");
+    printf("A cute TTY pond simulator. Frogs included.\n");
     printf("Use the \"Q\" key to quit. Recommended over Ctrl+C.\n");
+    printf("\n");
     printf("Usage: pond [OPTIONS]\n");
     printf("\n");
     printf("Options:\n");
     printf("--help, -h           Prints this help and exits\n");
     printf("--screensaver, -s    Starts the program in screensaver mode\n");
-    printf("--time=[SECS], -t    Time after which the screensaver mode activates\n");
-    printf("                     (Overrides the default 5 minutes)\n");
+    printf("                     (exits on any key press)\n");
+    printf("--delay              In screensaver mode, delays the closing of the program\n");
+    printf("                     just a little bit.\n");
     printf("--quiet, -q          Doesn't show the report at the end (if you run the\n");
-    printf("                     program in screensaver mode, quiet is activated by default\n");
+    printf("                     program in screensaver mode, quiet is activated by default)\n");
     printf("--rain, -r           Forces the rain on\n");
     printf("--dry, -d            Forces the rain off\n");
     printf("--flowers, -f        Forces flowers on, for a lovely spring look\n");
-    printf("--no-flowers, -nf    No flowers :(\n");
-    printf("--intrepid-frogs, -i Frogs don't get scared by key or mouse presses\n");
+    printf("--no-flowers, -nf    Forces flowers off, for a minimalist look\n");
+    printf("--intrepid-frogs, -i Frogs won't get scared by key or mouse presses\n");
     printf("--all-the-frogs, -a  Gives you all the frogs\n");
     printf("--debug              Shows *some* debug information\n");
 }
 
 bool OPTION_SCREENSAVER = false;
-int  OPTION_SCREENSAVER_ACTIVATION_TIME = 300;
+int  OPTION_SCREENSAVER_DELAY = 0;
 bool OPTION_FORCE_RAIN = false;
 bool OPTION_FORCE_NO_RAIN = false;
 bool OPTION_FORCE_FLOWERS = false;
@@ -69,6 +70,11 @@ void parse_args(int argc, char** argv) {
         if (strcmp(str, "--help") == 0 || strcmp(str, "-h") == 0) {
             print_help();
             exit(0);
+        } else if (strcmp(str, "--screensaver") == 0 || strcmp(str, "-s") == 0) {
+            OPTION_SCREENSAVER = true;
+            OPTION_QUIET = true;
+        } else if (strcmp(str, "--delay") == 0) {
+            OPTION_SCREENSAVER_DELAY = 10;
         } else if (strcmp(str, "--rain") == 0 || strcmp(str, "-r") == 0) {
             OPTION_FORCE_RAIN = true;
         } else if (strcmp(str, "--dry") == 0 || strcmp(str, "-d") == 0) {
@@ -809,7 +815,12 @@ int main(int argc, char* argv[]) {
     bool quit = false;
     int last_panic = 0;
     int number_of_plouf_by_loop = rain ? 2 : 1;
-    while (!quit) {
+    int quit_delay = 0;
+    while (!quit || quit_delay > 0) {
+        if (quit) {
+            quit_delay--;
+        }
+
         last_panic--;
         int frog_count = 0;
         for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
@@ -862,6 +873,11 @@ int main(int argc, char* argv[]) {
         wrefresh(win);
         int ch = getch();
         if (ch != ERR) {
+            if (OPTION_SCREENSAVER) {
+                quit = true;
+                quit_delay = OPTION_SCREENSAVER_DELAY;
+            }
+
             if (!OPTION_INTREPID_FROGS && last_panic <= 0) {
                 for (int i = 0; i < FROG_ARRAY_SIZE; i++) {
                     if (!is_frog_array_index_free[i]) {
