@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <locale.h>
 
+#define uint unsigned int
+
 #define SIN_PI_OVER_4 0.7
 
 #define GREEN   1
@@ -271,7 +273,7 @@ int alternate_sides_size = 3;
     }
 }*/
 
-uint calculate_coolness_score(struct Frog* frog) {
+void calculate_coolness_score(struct Frog* frog) {
     uint color_score = 10; // so that color doesnt have that much influence
     uint eye_score = 1;
     uint mouth_score = 1;
@@ -290,7 +292,8 @@ uint calculate_coolness_score(struct Frog* frog) {
     if (frog->sides[0] != '(')
         sides_score = 12;
 
-    return color_score * eye_score * mouth_score * sides_score * random_score;
+    uint score = color_score * eye_score * mouth_score * sides_score * random_score;
+    frog->coolness_score = score;
 }
 
 void addPlouf(int x, int y) {
@@ -682,9 +685,8 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
 
             // very important step
             if (!OPTION_QUIET) {
-                uint score = calculate_coolness_score(&frog);
-                frog.coolness_score = score; // i know i know
-                if (score > coolest_frog.coolness_score) {
+                calculate_coolness_score(&frog);
+                if (frog.coolness_score > coolest_frog.coolness_score) {
                     coolest_frog = frog;
                 }
             }
