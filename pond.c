@@ -956,9 +956,9 @@ int main(int argc, char* argv[]) {
         } else {
             printf("Finally! After observing frogs for so long, I have completed my PhD on frogs!\n");
             if (rain) {
-                printf("*You hold a soaked piece of paper that once was your PhD, but it has become\nillegible... You consider coming back when it's not raining.*");
+                printf("*You hold a soaked piece of paper that once was your PhD, but it has become\nillegible... You consider coming back when it's not raining.*\n");
             } else {
-                printf("*You hold the last page of you PhD; its final conclusion is that frogs are\ncute. You are correct.*");
+                printf("*You hold the last page of you PhD; its final conclusion is that frogs are\ncute. You are correct.*\n");
             }
         }
         printf("Anyway, here is the coolest frog I saw today:\n");
