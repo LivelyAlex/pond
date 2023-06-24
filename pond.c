@@ -759,6 +759,8 @@ int main(int argc, char* argv[]) {
     WINDOW* win = stdscr;
    // keypad(win, true);      
     // my inits
+    int INCOLS = COLS; //IN for initial
+    int INLINES = LINES;
     bool rain = rand() % 5 == 0;
     bool flower_season = rand() % 2 == 0;
 
@@ -815,6 +817,7 @@ int main(int argc, char* argv[]) {
     spawn_frog(frog_array, is_frog_array_index_free, LINES + DEATH_ZONE, rand() % COLS, UP);
 
     bool quit = false;
+    bool window_resizing = false;
     int last_panic = 0;
     int number_of_plouf_by_loop = rain ? 2 : 1;
     int quit_delay = 0;
@@ -916,6 +919,11 @@ int main(int argc, char* argv[]) {
         ts.tv_nsec = pause_ms * 1000000;
         nanosleep(&ts, NULL);
 
+        if (COLS != INCOLS || LINES != INLINES) {
+            quit = true;
+            window_resizing = true;
+            // resizing actually mostly works, but sometimes shows undefined behaviour so let's just be safe
+        }
     }
 
     endwin();
@@ -927,6 +935,9 @@ int main(int argc, char* argv[]) {
     }*/
 
     if (!OPTION_QUIET) {
+        if (window_resizing) {
+            printf("[exiting due to terminal window resizing]\n");
+        }
         char* weather = rain ? "rainy" : "nice";
         char* flower_opt = flower_season ? ", the lily pads were flowering!" : ".";
         printf("That was a %s day at the pond%s\n", weather, flower_opt);
