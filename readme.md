@@ -1,5 +1,5 @@
 # Pond, a soothing in-terminal idle screen
-A software that simulates a little pond, complete with flowering lilypads. If you observe very quietly, you might just spot some wildlife!
+A software that simulates a little pond, complete with flowering lilypads and adorable little frogs jumping around.
 
 ## Screenshots
 Example of a pond:
@@ -10,8 +10,14 @@ The frog says hi!
 
 ![frog](images/frog.png)
 
+Video example:
+
+<figure class="video_container">
+  <iframe src="https://packaged-media.redd.it/i9nxzm3e2r7b1/pb/m2-res_480p.mp4?m=exp-edc%2FDASHPlaylist.mpd&v=1&e=1687716000&s=ff892f217455f75324345a9fe41a6683b7db8f73#t=0" frameborder="0" allowfullscreen="true"> </iframe>
+</figure>
+
 ## How to use pond??
-Just type `pond` after installing it and you're set! Use `q` to leave the pond (you can also use Ctrl-C but then you won't have the little report at the end).
+Just type `pond` after installing it and you're set! Use `q` to leave the pond.
 
 If you want more info and some options to play with, type `pond --help`!
 
@@ -19,6 +25,7 @@ If you want more info and some options to play with, type `pond --help`!
 - frogs
 - the most advanced frog AI in the market
 - collect rare frogs!
+- frogs have deep and uniques personalities
 - please be kind with the frogs and don't scare them
 - non-resizable window
 
