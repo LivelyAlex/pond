@@ -32,30 +32,38 @@
 #define FISH_DENSITY       0.01
 #define DEATH_ZONE         8 // after that many characters offscreen, KILL the entity
 
+const int PLOUF_TICKS_PER_FRAME = 1;
+const int PLOUF_LIFETIME = PLOUF_TICKS_PER_FRAME * 4;
+int RANDOM_PLOUF_CHANCE = 100;
+const int FROG_ARRAY_SIZE = 16;
+int FROGS_SPAWNED = 0;
+
 void print_help() {
-    printf(
-        "A cute TTY pond simulator. Frogs included.\n"
-        "Use the \"Q\" key to quit. Recommended over Ctrl+C.\n"
-        "\n"
-        "Usage: pond [OPTIONS]\n"
-        "\n"
-        "Options:\n"
-        "--help, -h                 Prints this help and exits\n"
-        "--screensaver, -s          Starts the program in screensaver mode\n"
-        "                           (exits on any key press)\n"
-        "--delay                    In screensaver mode, delays the closing of the program\n"
-        "                           just a little bit.\n"
-        "--quiet, -q                Doesn't show the report at the end (if you run the\n"
-        "                           program in screensaver mode, quiet is activated by default)\n"
-        "--rain, -r                 Forces the rain on\n"
-        "--dry, -d                  Forces the rain off\n"
-        "--flowers, -f              Forces flowers on, for a lovely spring look\n"
-        "--no-flowers, -nf          Forces flowers off, for a minimalist look\n"
-        "--intrepid-frogs, -i       Frogs won't get scared by key or mouse presses\n"
-        "--all-the-frogs, -a        Gives you all the frogs\n"
-        "--debug                    Shows *some* debug information\n"
-        "--default-background, -db  Changes background to match terminal default. Normally it is black\n"
-    );
+    printf("A cute TTY pond simulator. Frogs included.\n");
+    printf("Use the \"Q\" key to quit\n");
+    printf("\n");
+    printf("Usage: pond [OPTIONS]\n");
+    printf("\n");
+    printf("Options:\n");
+    printf("--help, -h             Prints this help and exits\n");
+    printf("--screensaver, -s      Starts the program in screensaver mode\n");
+    printf("                       (quiet mode set & exits on any key press)\n");
+    printf("--delay                In screensaver mode, delays the closing of the program\n");
+    printf("                       just a little bit.\n");
+    printf("--quiet, -q            Doesn't show the report at the end\n");
+    printf("--rain, -r             Forces the rain on\n");
+    printf("--dry, -d              Forces the rain off\n");
+    printf("--flowers, -f          Forces flowers on, for a lovely spring look\n");
+    printf("--no-flowers, -nf      Forces flowers off, for a minimalist look\n");
+    printf("--intrepid-frogs, -i   Frogs won't get scared by key or mouse presses\n");
+    printf("--all-the-frogs, -a    Gives you all the frogs. Overrides --frog-spawn\n");
+    printf("--debug                Shows *some* debug information (nbr of frogs simulated)\n");
+    printf("\n");
+    printf("Tweaking options:\n");
+    printf("[F] is a decimal number. Defaults to 1\n");
+    printf("--frog-spawn [F], -fs       Frog spawn multiplier\n");
+    printf("--leaf-density [F], -lf     Lily pad density multiplier\n");
+    printf("--flower-density [F], -fd   Waterlilies density multiplier. Forces flowers on\n");
 }
 
 bool OPTION_SCREENSAVER = false;
@@ -69,6 +77,39 @@ bool OPTION_INTREPID_FROGS = false;
 bool OPTION_ALL_FROGS = false;
 bool OPTION_DEBUG = false;
 bool OPTION_DEFAULT_BACKGROUND = false;
+
+int NEW_FROG_CHANCE = 100; // 1/100 change of frog spawn each tick
+float OPTION_FROG_SPAWN_MULT = 1.0;
+float OPTION_LEAF_DENSITY = 1.0;
+float OPTION_FLOWER_DENSITY = 1.0;
+float OPTION_RAIN_STRENGTH = 1.0;
+
+float get_float_arg_parameter(char* option, int i, char** argv) {
+    if (i < sizeof(argv)) {
+        char* parameter = argv[i];
+        if (strcmp(parameter, "0") == 0 || strcmp(parameter, "0.0") == 0)
+            return 0.0;
+        float value = atof(argv[i]);
+        if (value != 0.0)
+            return value;
+    }
+    printf("Please specify a valid number for the option \"%s\". Try pond -h for help\n", option);
+    exit(-1);
+}
+
+int get_int_arg_parameter(char* option, int i, char** argv) {
+    if (i < sizeof(argv)) {
+        int value;
+        char* parameter = argv[i];
+        if (strcmp(parameter, "0") == 0)
+            return 0;
+        value = atoi(parameter);
+        if (value != 0)
+            return value;
+    }
+    printf("Please specify a valid number for the option \"%s\". Try pond -h for help\n", option);
+    exit(-1);
+}
 
 void parse_args(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
@@ -99,9 +140,26 @@ void parse_args(int argc, char** argv) {
             OPTION_QUIET = true;
         } else if (strcmp(str, "--default-background") == 0 || strcmp(str, "-db") == 0) {
             OPTION_DEFAULT_BACKGROUND = true;
+        } else if (strcmp(str, "--frog-spawn") == 0 || strcmp(str, "-fs") == 0) {
+            i++;
+            OPTION_FROG_SPAWN_MULT = get_float_arg_parameter(str, i, argv);
+        } else if (strcmp(str, "--flower-density") == 0 || strcmp(str, "-fd") == 0) {
+            i++;
+            OPTION_FORCE_FLOWERS = true;
+            OPTION_FLOWER_DENSITY = get_float_arg_parameter(str, i, argv);
+        } else if (strcmp(str, "--leaf-density") == 0 || strcmp(str, "-ld") == 0) {
+            i++;
+            OPTION_LEAF_DENSITY = get_float_arg_parameter(str, i, argv);
+//        } else if (strcmp(str, "--max-frogs") == 0 || strcmp(str, "-mf") == 0) {
+ //           i++;
+  //          FROG_ARRAY_SIZE = get_int_arg_parameter(str, i, argv);
+   //         if (FROG_ARRAY_SIZE < 0 || FROG_ARRAY_SIZE > FROG_ARRAY_SIZE) {
+    //            printf("Please specify a number between 0 and %d for %s. Try pond -h for help\n", FROG_ARRAY_SIZE, str);
+      //          exit(1);
+        //    }
         } else {
             printf("Unknown option : \"%s\". Try pond -h for help\n", str);
-            printf("(Note: some options aren't implemented yet)\n");
+            //printf("(Note: some options aren't implemented yet)\n");
             exit(-1);
         }
     }
@@ -114,12 +172,6 @@ struct Sprite {
     char*  frameBuffer[];
 };
 
-const int PLOUF_TICKS_PER_FRAME = 1;
-const int PLOUF_LIFETIME = PLOUF_TICKS_PER_FRAME * 4;
-int RANDOM_PLOUF_CHANCE = 100;
-int NEW_FROG_CHANCE = 100; // 1/NEW_FROG_CHANCE is the actual probability
-const int FROG_ARRAY_SIZE = 16;
-int FROGS_SPAWNED = 0;
 
 struct Plouf {
     //struct Sprite* sprite;
@@ -432,10 +484,21 @@ void set_up_waterlilies(short terrain[LINES][COLS], struct WaterLily lily_pad_ar
     for (int i = 0; i < n_waterlilies + n_lily_flowers; i++) {
         short color = GREEN; //rand() % 3 == 0 ? YELLOW : GREEN;
         int x, y;
+        int loop_count;
         do {
+            loop_count++;
             y = rand() % LINES;
             x = rand() % COLS;
-        } while (terrain[y][x] != WATER);
+        } while (terrain[y][x] != WATER && loop_count < 1000);
+        
+        if (loop_count >= 1000) {
+            endwin();
+            printf("The terrain generation failed: unable to find a free space to add a leaf or flower.\n");
+            printf("If you're playing with options, please chose something more reasonable. Otherwise, please report this!\n");
+            exit(-2);
+        }
+
+
         bool flower = i >= n_waterlilies + 1;
         if (flower)
             color = rand() % 3 == 0 ? MAGENTA : NORMAL;
@@ -791,6 +854,7 @@ int main(int argc, char* argv[]) {
     if (OPTION_FORCE_NO_RAIN) {
         rain = false;
     }
+    NEW_FROG_CHANCE *= 1.0/OPTION_FROG_SPAWN_MULT;
 
     if (rain) {
         RANDOM_PLOUF_CHANCE = 1;
@@ -809,8 +873,8 @@ int main(int argc, char* argv[]) {
     }
 
     // waterlilies leaves
-    int n_lily_pad_leaves = LILYPAD_DENSITY * (COLS * LINES);
-    int n_lily_flowers = flower_season ? FLOWER_DENSITY * (COLS * LINES) : 0;
+    int n_lily_pad_leaves = LILYPAD_DENSITY * OPTION_LEAF_DENSITY * (COLS * LINES);
+    int n_lily_flowers = flower_season ? FLOWER_DENSITY * OPTION_FLOWER_DENSITY * (COLS * LINES) : 0;
     if (n_lily_flowers == 0)
         n_lily_flowers = 1;
     struct WaterLily lily_pad_array[n_lily_pad_leaves + n_lily_flowers];
@@ -967,9 +1031,9 @@ int main(int argc, char* argv[]) {
         } else {
             printf("Finally! After observing frogs for so long, I have completed my PhD on frogs!\n");
             if (rain) {
-                printf("*You hold a soaked piece of paper that once was your PhD, but it has become\nillegible... You consider coming back when it's not raining.*");
+                printf("*You hold a soaked piece of paper that once was your PhD, but it has become\nillegible... You consider coming back when it's not raining.*\n");
             } else {
-                printf("*You hold the last page of you PhD; its final conclusion is that frogs are\ncute. You are correct.*");
+                printf("*You hold the last page of you PhD; its final conclusion is that frogs are\ncute. You are correct.*\n");
             }
         }
         printf("Anyway, here is the coolest frog I saw today:\n");
@@ -1076,7 +1140,7 @@ int main(int argc, char* argv[]) {
                     printf("It looks super boxy. Is that a robot frog??..\n");
                     break;
                 case '/':
-                    printf("It was very triangular. Kind of reminds me of a famous vilain..\n");
+                    printf("It's very triangular. Kind of reminds me of a famous vilain..\n");
                     break;
                 default:
                     printf("I've never seen anything like it..\n");
