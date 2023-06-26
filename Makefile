@@ -3,9 +3,9 @@ make : pond.c
 	clang pond.c -lcurses -o bin/pond
 
 install: bin/pond
-	cp bin/pond ~/../usr/bin/pond
+	cp bin/pond ~/usr/local/games/pond
 
 uninstall:
-	rm ~/../usr/bin/pond
+	rm ~/usr/local/games/pond
 	rm bin/pond
 	rmdir bin
