@@ -35,8 +35,9 @@
 const int PLOUF_TICKS_PER_FRAME = 1;
 const int PLOUF_LIFETIME = PLOUF_TICKS_PER_FRAME * 4;
 int RANDOM_PLOUF_CHANCE = 100;
-const int FROG_ARRAY_SIZE = 16;
+int FROG_ARRAY_SIZE = 16;
 int FROGS_SPAWNED = 0;
+int NEW_FROG_CHANCE = 100; // 1/100 change of frog spawn each tick
 
 void print_help() {
     printf("A cute TTY pond simulator. Frogs included.\n");
@@ -65,6 +66,11 @@ void print_help() {
     printf("--frog-spawn [F], -fs       Frog spawn multiplier\n");
     printf("--leaf-density [F], -lf     Lily pad density multiplier\n");
     printf("--flower-density [F], -fd   Waterlilies density multiplier. Forces flowers on\n");
+    printf("--frog-buffer [N]           Changes the size of the frog buffer, effectively\n");
+    printf("                            changing the maximum number of frogs that can be\n");
+    printf("                            simulated (default: 16). Any positive ingeger will\n");
+
+    printf("                            do, but powers of 2 make you look smarter\n");
 }
 
 bool OPTION_SCREENSAVER = false;
@@ -79,7 +85,7 @@ bool OPTION_ALL_FROGS = false;
 bool OPTION_DEBUG = false;
 bool OPTION_DEFAULT_BACKGROUND = false;
 
-int NEW_FROG_CHANCE = 100; // 1/100 change of frog spawn each tick
+int   OPTION_FROG_ARRAY_SIZE = 0;
 float OPTION_FROG_SPAWN_MULT = 1.0;
 float OPTION_LEAF_DENSITY = 1.0;
 float OPTION_FLOWER_DENSITY = 1.0;
@@ -151,13 +157,9 @@ void parse_args(int argc, char** argv) {
         } else if (strcmp(str, "--leaf-density") == 0 || strcmp(str, "-ld") == 0) {
             i++;
             OPTION_LEAF_DENSITY = get_float_arg_parameter(str, i, argv);
-//        } else if (strcmp(str, "--max-frogs") == 0 || strcmp(str, "-mf") == 0) {
- //           i++;
-  //          FROG_ARRAY_SIZE = get_int_arg_parameter(str, i, argv);
-   //         if (FROG_ARRAY_SIZE < 0 || FROG_ARRAY_SIZE > FROG_ARRAY_SIZE) {
-    //            printf("Please specify a number between 0 and %d for %s. Try pond -h for help\n", FROG_ARRAY_SIZE, str);
-      //          exit(1);
-        //    }
+        } else if (strcmp(str, "--frog-buffer") == 0) {
+            i++;
+            OPTION_FROG_ARRAY_SIZE = get_int_arg_parameter(str, i, argv);
         } else {
             printf("Unknown option : \"%s\". Try pond -h for help\n", str);
             //printf("(Note: some options aren't implemented yet)\n");
@@ -854,6 +856,9 @@ int main(int argc, char* argv[]) {
     }
     if (OPTION_FORCE_NO_RAIN) {
         rain = false;
+    }
+    if (OPTION_FROG_ARRAY_SIZE > 0) {
+        FROG_ARRAY_SIZE = OPTION_FROG_ARRAY_SIZE;
     }
     NEW_FROG_CHANCE *= 1.0/OPTION_FROG_SPAWN_MULT;
 
