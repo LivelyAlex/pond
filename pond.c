@@ -46,6 +46,7 @@ void print_help() {
     printf("\n");
     printf("Options:\n");
     printf("--help, -h             Prints this help and exits\n");
+    printf("--default-bg, -db      Uses the default terminal background instead of black\n");
     printf("--screensaver, -s      Starts the program in screensaver mode\n");
     printf("                       (quiet mode set & exits on any key press)\n");
     printf("--delay                In screensaver mode, delays the closing of the program\n");
@@ -138,7 +139,7 @@ void parse_args(int argc, char** argv) {
             OPTION_DEBUG = true;
         } else if (strcmp(str, "--quiet") == 0 || strcmp(str, "-q") == 0) {
             OPTION_QUIET = true;
-        } else if (strcmp(str, "--default-background") == 0 || strcmp(str, "-db") == 0) {
+        } else if (strcmp(str, "--default-bg") == 0 || strcmp(str, "-db") == 0) {
             OPTION_DEFAULT_BACKGROUND = true;
         } else if (strcmp(str, "--frog-spawn") == 0 || strcmp(str, "-fs") == 0) {
             i++;
