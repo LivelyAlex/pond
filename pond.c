@@ -33,26 +33,29 @@
 #define DEATH_ZONE         8 // after that many characters offscreen, KILL the entity
 
 void print_help() {
-    printf("A cute TTY pond simulator. Frogs included.\n");
-    printf("Use the \"Q\" key to quit. Recommended over Ctrl+C.\n");
-    printf("\n");
-    printf("Usage: pond [OPTIONS]\n");
-    printf("\n");
-    printf("Options:\n");
-    printf("--help, -h           Prints this help and exits\n");
-    printf("--screensaver, -s    Starts the program in screensaver mode\n");
-    printf("                     (exits on any key press)\n");
-    printf("--delay              In screensaver mode, delays the closing of the program\n");
-    printf("                     just a little bit.\n");
-    printf("--quiet, -q          Doesn't show the report at the end (if you run the\n");
-    printf("                     program in screensaver mode, quiet is activated by default)\n");
-    printf("--rain, -r           Forces the rain on\n");
-    printf("--dry, -d            Forces the rain off\n");
-    printf("--flowers, -f        Forces flowers on, for a lovely spring look\n");
-    printf("--no-flowers, -nf    Forces flowers off, for a minimalist look\n");
-    printf("--intrepid-frogs, -i Frogs won't get scared by key or mouse presses\n");
-    printf("--all-the-frogs, -a  Gives you all the frogs\n");
-    printf("--debug              Shows *some* debug information\n");
+    printf(
+        "A cute TTY pond simulator. Frogs included.\n"
+        "Use the \"Q\" key to quit. Recommended over Ctrl+C.\n"
+        "\n"
+        "Usage: pond [OPTIONS]\n"
+        "\n"
+        "Options:\n"
+        "--help, -h                 Prints this help and exits\n"
+        "--screensaver, -s          Starts the program in screensaver mode\n"
+        "                           (exits on any key press)\n"
+        "--delay                    In screensaver mode, delays the closing of the program\n"
+        "                           just a little bit.\n"
+        "--quiet, -q                Doesn't show the report at the end (if you run the\n"
+        "                           program in screensaver mode, quiet is activated by default)\n"
+        "--rain, -r                 Forces the rain on\n"
+        "--dry, -d                  Forces the rain off\n"
+        "--flowers, -f              Forces flowers on, for a lovely spring look\n"
+        "--no-flowers, -nf          Forces flowers off, for a minimalist look\n"
+        "--intrepid-frogs, -i       Frogs won't get scared by key or mouse presses\n"
+        "--all-the-frogs, -a        Gives you all the frogs\n"
+        "--debug                    Shows *some* debug information\n"
+        "--default-background, -db  Changes background to match terminal default. Normally it is black\n"
+    );
 }
 
 bool OPTION_SCREENSAVER = false;
@@ -65,6 +68,7 @@ bool OPTION_QUIET = false;
 bool OPTION_INTREPID_FROGS = false;
 bool OPTION_ALL_FROGS = false;
 bool OPTION_DEBUG = false;
+bool OPTION_DEFAULT_BACKGROUND = false;
 
 void parse_args(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
@@ -93,6 +97,8 @@ void parse_args(int argc, char** argv) {
             OPTION_DEBUG = true;
         } else if (strcmp(str, "--quiet") == 0 || strcmp(str, "-q") == 0) {
             OPTION_QUIET = true;
+        } else if (strcmp(str, "--default-background") == 0 || strcmp(str, "-db") == 0) {
+            OPTION_DEFAULT_BACKGROUND = true;
         } else {
             printf("Unknown option : \"%s\". Try pond -h for help\n", str);
             printf("(Note: some options aren't implemented yet)\n");
@@ -746,15 +752,20 @@ int main(int argc, char* argv[]) {
     //if (!OPTION_DEBUG) // debug step by step
     nodelay(stdscr, true); // non blocking wait for char
     start_color();
+    short background_color = COLOR_BLACK;
+    if (OPTION_DEFAULT_BACKGROUND) {
+        use_default_colors();
+        background_color = -1;
+    }
     // to make the frogs run when we click on screen
     mousemask(BUTTON1_PRESSED | BUTTON2_PRESSED, NULL);
 
-    init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
-    init_pair(YELLOW, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(NORMAL, COLOR_WHITE, COLOR_BLACK);
-    init_pair(BLUE, COLOR_BLUE, COLOR_BLACK);
-    init_pair(MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
-    init_pair(RED, COLOR_RED, COLOR_BLACK);
+    init_pair(GREEN, COLOR_GREEN, background_color);
+    init_pair(YELLOW, COLOR_YELLOW, background_color);
+    init_pair(NORMAL, COLOR_WHITE, background_color);
+    init_pair(BLUE, COLOR_BLUE, background_color);
+    init_pair(MAGENTA, COLOR_MAGENTA, background_color);
+    init_pair(RED, COLOR_RED, background_color);
 
     WINDOW* win = stdscr;
    // keypad(win, true);      
