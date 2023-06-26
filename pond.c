@@ -76,6 +76,8 @@ bool OPTION_QUIET = false;
 bool OPTION_INTREPID_FROGS = false;
 bool OPTION_ALL_FROGS = false;
 bool OPTION_DEBUG = false;
+bool OPTION_DEFAULT_BACKGROUND = false;
+
 int NEW_FROG_CHANCE = 100; // 1/100 change of frog spawn each tick
 float OPTION_FROG_SPAWN_MULT = 1.0;
 float OPTION_LEAF_DENSITY = 1.0;
@@ -136,6 +138,8 @@ void parse_args(int argc, char** argv) {
             OPTION_DEBUG = true;
         } else if (strcmp(str, "--quiet") == 0 || strcmp(str, "-q") == 0) {
             OPTION_QUIET = true;
+        } else if (strcmp(str, "--default-background") == 0 || strcmp(str, "-db") == 0) {
+            OPTION_DEFAULT_BACKGROUND = true;
         } else if (strcmp(str, "--frog-spawn") == 0 || strcmp(str, "-fs") == 0) {
             i++;
             OPTION_FROG_SPAWN_MULT = get_float_arg_parameter(str, i, argv);
@@ -811,15 +815,20 @@ int main(int argc, char* argv[]) {
     //if (!OPTION_DEBUG) // debug step by step
     nodelay(stdscr, true); // non blocking wait for char
     start_color();
+    short background_color = COLOR_BLACK;
+    if (OPTION_DEFAULT_BACKGROUND) {
+        use_default_colors();
+        background_color = -1;
+    }
     // to make the frogs run when we click on screen
     mousemask(BUTTON1_PRESSED | BUTTON2_PRESSED, NULL);
 
-    init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
-    init_pair(YELLOW, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(NORMAL, COLOR_WHITE, COLOR_BLACK);
-    init_pair(BLUE, COLOR_BLUE, COLOR_BLACK);
-    init_pair(MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
-    init_pair(RED, COLOR_RED, COLOR_BLACK);
+    init_pair(GREEN, COLOR_GREEN, background_color);
+    init_pair(YELLOW, COLOR_YELLOW, background_color);
+    init_pair(NORMAL, COLOR_WHITE, background_color);
+    init_pair(BLUE, COLOR_BLUE, background_color);
+    init_pair(MAGENTA, COLOR_MAGENTA, background_color);
+    init_pair(RED, COLOR_RED, background_color);
 
     WINDOW* win = stdscr;
    // keypad(win, true);      
