@@ -10,24 +10,37 @@ The frog says hi!
 
 ![frog](images/frog.png)
 
-Video example:
-
-<figure class="video_container">
-  <iframe src="https://packaged-media.redd.it/i9nxzm3e2r7b1/pb/m2-res_480p.mp4?m=exp-edc%2FDASHPlaylist.mpd&v=1&e=1687716000&s=ff892f217455f75324345a9fe41a6683b7db8f73#t=0" frameborder="0" allowfullscreen="true"> </iframe>
-</figure>
-
-## How to use pond??
-Just type `pond` after installing it and you're set! Use `q` to leave the pond.
-
-If you want more info and some options to play with, type `pond --help`!
-
 ## Features
 - frogs
 - the most advanced frog AI in the market
 - collect rare frogs!
-- frogs have deep and uniques personalities
+- frogs have deep and unique personalities
 - please be kind with the frogs and don't scare them
 - non-resizable window
+
+## How to use pond??
+Just type `pond` after installing it and you're set! Use `q` to leave the pond.
+
+If you want more info and some options to play with, try `pond --help`!
+
+## This is too adorable, how do I make this my terminal screensaver??
+The only way I found is to use a terminal multiplexer. Here's how to set `pond` as your screensaver:
+
+### If you use tmux:
+In `~/.tmux.conf`: 
+
+```bash
+set -g lock-after-time 60
+set -g lock-command "pond -s"
+```
+
+### If you use screen for some reason:
+In your `~/.screenrc`:
+
+```bash
+idle 60 blanker
+blankerprg pond -s
+```
 
 ## How to build
 
@@ -47,3 +60,9 @@ pond # enjoy!
 If you don't want/can't `sudo`, you can also just run `make`, and run the program with `bin/pond`.
 
 - If you're on another OS, you're on your own, sorry.
+
+## Contributing
+Contributions are welcome! If you do want to contribute, please do keep those things in mind:
+- If you add new options, make sure that the help message doesn't wrap on standard 80 columns terminals
+- I can't guarantee that I'll merge any change you make! If you want to make sure beforehand, feel free to send me an email @ `alice.lefebvre.cool@proton.me`
+Thank you for considering contributing!
