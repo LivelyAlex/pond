@@ -205,7 +205,8 @@ struct Frog {
     char* sides;
     short direction;
     int jumpiness; // general tendency of that frog to jump around
-    int jump_distance; // will be applied twice, so it's really the half jump distance
+    int jump_distance_x; // will be applied twice, so it's really the half jump distance
+    int jump_distance_y;
     int swim_distance; // not used
     int jump_height;
     int croakiness; // you can guess
@@ -559,7 +560,7 @@ short get_next_direction(short direction, bool reverse) {
 
 
 // this can move a lot of other things than frogs, too!
-void frog_move(short direction, int distance, int* y, int* x) {
+void frog_move(short direction, int distance_y, int distance_x, int* y, int* x) {
     float x_direction_multiplier = (direction & 0b11) == RIGHT ? 1 : (direction & 0b11) == LEFT ? -1 : 0;
     float y_direction_multiplier = (direction & 0b1100) == DOWN ? 1 : (direction & 0b1100) == UP ? -1 : 0;
 
@@ -568,15 +569,15 @@ void frog_move(short direction, int distance, int* y, int* x) {
         y_direction_multiplier *= SIN_PI_OVER_4;
     }
 
-    *x += distance * x_direction_multiplier;
-    *y += distance * y_direction_multiplier;
+    *x += distance_x * x_direction_multiplier;
+    *y += distance_y * y_direction_multiplier;
 }
 
-short frog_predict_landing_tile(short terrain[LINES][COLS], short direction, short distance, int y, int x) {
+short frog_predict_landing_tile(short terrain[LINES][COLS], short direction, int distance_y, int distance_x, int y, int x) {
     int _x = x;
     int _y = y;
-    frog_move(direction, distance, &_y, &_x); 
-    frog_move(direction, distance, &_y, &_x); 
+    frog_move(direction, distance_y, distance_x, &_y, &_x); 
+    frog_move(direction, distance_y, distance_x, &_y, &_x); 
     return get_terrain(terrain, _y, _x);
 }
 
@@ -607,7 +608,7 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                 if (frog->in_water) {
                     addPlouf(frog->x, frog->y);
                     // this allows the frog to leap out of the water if the jump ends on land
-                    if (frog_predict_landing_tile(terrain, frog->direction, frog->jump_distance, frog->y, frog->x) != WATER) {
+                    if (frog_predict_landing_tile(terrain, frog->direction, frog->jump_distance_y, frog->jump_distance_x, frog->y, frog->x) != WATER) {
                         frog->in_water = false;
                         if (frog->loves_land) {
                             frog->jumps_left_to_do = 1;
@@ -620,7 +621,7 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
             char* default_str = "";
             char** str_to_render = &default_str; 
             if (frog->jumping > 0) {
-                frog_move(frog->direction, frog->jump_distance, &frog->y, &frog->x);
+                frog_move(frog->direction, frog->jump_distance_y, frog->jump_distance_x, &frog->y, &frog->x);
                 y = frog->y;
 
                 // first tick of the jump
@@ -746,7 +747,8 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 .jumps_in_a_row = 2 + rand() % 4,
                 .time_between_jumps = 2 + rand() % 6,
                 .jumping = 0,
-                .jump_distance = 2,
+                .jump_distance_y = 1,
+                .jump_distance_x = 2,
                 .jump_height = 3,
                 .jumpiness = jumpiness,
                 .croak = 0,
