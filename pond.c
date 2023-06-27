@@ -663,14 +663,14 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
             } else {// non-jumping frog
                 frog->eye_wetness--;
                 if (frog->eye_wetness <= 0) {
-                    frog->eye_wetness = rand() % 50 + 10;
+                    frog->eye_wetness = frog->blinkiness + rand() % 5;
                     blinking = true;
                 }
                 if (frog->croak > 0) {
                     frog->croak--;
                 } else if (frog->urge_to_croak <= 0) {
                     frog->croak = 4;
-                    frog->urge_to_croak = rand() % 100 + 50;
+                    frog->urge_to_croak = frog->croakiness + rand() % 10;
                 }
                 else {
                     frog->urge_to_croak--;
