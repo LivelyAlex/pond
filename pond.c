@@ -16,6 +16,7 @@
 #define BLUE    4
 #define MAGENTA 5
 #define RED     6
+#define DBG_CLR 7
 
 #define LEFT    0b0001
 #define RIGHT   0b0010
@@ -59,7 +60,7 @@ void print_help() {
     printf("--no-flowers, -nf      Forces flowers off, for a minimalist look\n");
     printf("--intrepid-frogs, -i   Frogs won't get scared by key or mouse presses\n");
     printf("--all-the-frogs, -a    Gives you all the frogs. Overrides --frog-spawn\n");
-    printf("--debug                Shows *some* debug information (nbr of frogs simulated)\n");
+    printf("--debug                Shows debug information. S to step. Intrepid frogs on.\n");
     printf("\n");
     printf("Tweaking options:\n");
     printf("[F] is a decimal number. Defaults to 1\n");
@@ -143,6 +144,7 @@ void parse_args(int argc, char** argv) {
             OPTION_ALL_FROGS = true;
         } else if (strcmp(str, "--debug") == 0) {
             OPTION_DEBUG = true;
+            OPTION_INTREPID_FROGS = true; // to not interfer w/ step-by-step
         } else if (strcmp(str, "--quiet") == 0 || strcmp(str, "-q") == 0) {
             OPTION_QUIET = true;
         } else if (strcmp(str, "--default-bg") == 0 || strcmp(str, "-db") == 0) {
@@ -311,6 +313,9 @@ char* frog_croak = "\
 char* frog_swimming = "\n  omo";
 char* from_swimming_blinking = "\n  -m-";
 
+int frog_offset_y = 1;
+int frog_offset_x = 3;
+
 char alternate_eyes[] = {'0', '@', '.', 'T', '^', 'e', 'c', 'v', 'p', '$'};
 int alternate_eyes_size = 10;
 
@@ -357,7 +362,7 @@ void calculate_coolness_score(struct Frog* frog) {
     frog->coolness_score = score;
 }
 
-void addPlouf(int x, int y) {
+void addPlouf(int y, int x) {
    for (int i = 0; i < PLOUF_ARRAY_LENGTH; i++) {
        if (isPloufArrayIndexFree[i]) {
             struct Plouf newPlouf = {
@@ -431,6 +436,10 @@ void render_frog(WINDOW* win, char* str, int Y, int X, int center_y, int center_
                     startedRendering = true;
                 }
 
+                if (OPTION_DEBUG && x == X && y == Y) {
+                    wattron(win, A_REVERSE);
+                }
+
                 if (!skip) {
                     if (str[i] == 'o') {
                         waddch(win, eye_char);
@@ -444,6 +453,11 @@ void render_frog(WINDOW* win, char* str, int Y, int X, int center_y, int center_
                         waddch(win, str[i]);
                     }
                 }
+
+                if (OPTION_DEBUG && x == X && y == Y) {
+                    wattroff(win, A_REVERSE);
+                }
+
             }
             x ++;
         }
@@ -605,7 +619,7 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                     frog->direction = get_next_direction(frog->direction, reverse);
                 }
                 if (frog->in_water) {
-                    addPlouf(frog->x, frog->y);
+                    addPlouf(frog->y, frog->x);
                     // this allows the frog to leap out of the water if the jump ends on land
                     if (frog_predict_landing_tile(terrain, frog->direction, frog->jump_distance, frog->y, frog->x) != WATER) {
                         frog->in_water = false;
@@ -642,7 +656,7 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                     
                     if(get_terrain(terrain, frog->y, frog->x) == WATER) {
                         frog->in_water = true;
-                        addPlouf(frog->x, frog->y);
+                        addPlouf(frog->y, frog->x);
                     } else {
                         frog->in_water = false;
                     }
@@ -685,7 +699,7 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
 
            
             wattron(win, A_BOLD | COLOR_PAIR(frog->color));
-            render_frog(win, *str_to_render, y, frog->x, 1, 2, false, frog->eyes, frog->mouth, frog->sides[0], frog->sides[1]);
+            render_frog(win, *str_to_render, y, frog->x, frog_offset_y, frog_offset_x, false, frog->eyes, frog->mouth, frog->sides[0], frog->sides[1]);
             
         }
     }
@@ -832,6 +846,7 @@ int main(int argc, char* argv[]) {
     init_pair(BLUE, COLOR_BLUE, background_color);
     init_pair(MAGENTA, COLOR_MAGENTA, background_color);
     init_pair(RED, COLOR_RED, background_color);
+    init_pair(DBG_CLR, COLOR_WHITE, COLOR_RED);
 
     WINDOW* win = stdscr;
    // keypad(win, true);      
@@ -898,6 +913,7 @@ int main(int argc, char* argv[]) {
     spawn_frog(frog_array, is_frog_array_index_free, LINES + DEATH_ZONE, rand() % COLS, UP);
 
     bool quit = false;
+    bool step_by_step = false;
     bool window_resizing = false;
     int last_panic = 0;
     int number_of_plouf_by_loop = rain ? 2 : 1;
@@ -925,7 +941,7 @@ int main(int argc, char* argv[]) {
                 int y = rand() % LINES;
                 int x = rand() % COLS;
                 if (terrain[y][x] == WATER)
-                    addPlouf(x, y);
+                    addPlouf(y, x);
             }
         }
 
@@ -952,8 +968,14 @@ int main(int argc, char* argv[]) {
         if (OPTION_DEBUG) {
             wattron(win, COLOR_PAIR(NORMAL));
             wmove(win, 0, 0);
+            //doesn't work with 99+ frogs, whatever
+            waddstr(win, "frogs: ");
             waddch(win, (frog_count / 10) + 0x30);
             waddch(win, (frog_count % 10) + 0x30);
+            if (step_by_step) {
+                wmove(win, 1, 0);
+                waddstr(win, "press any key to step");
+            }
         }
 
         wrefresh(win);
@@ -992,9 +1014,19 @@ int main(int argc, char* argv[]) {
         
         if (ch == 'q' || ch == 'Q')
             quit = true;
+        if (OPTION_DEBUG && (ch == 's' || ch == 'S')) {
+            step_by_step = !step_by_step; 
+        }
+        if (OPTION_DEBUG) {
+            nodelay(stdscr, true);
+        }
 
         while (getch() != ERR) {} //empty buffer (bc clicks fill the buffer and block exiting for a while)
         
+        if (OPTION_DEBUG) {
+            nodelay(stdscr, !step_by_step);
+        }
+
         struct timespec ts;
         ts.tv_sec = 0;
         ts.tv_nsec = pause_ms * 1000000;
