@@ -39,6 +39,7 @@ int RANDOM_PLOUF_CHANCE = 100;
 int FROG_ARRAY_SIZE = 16;
 int FROGS_SPAWNED = 0;
 int NEW_FROG_CHANCE = 100; // 1/100 change of frog spawn each tick
+int SELECTED_FROG = -1; //used in debug
 
 void print_help() {
     printf("A cute TTY pond simulator. Frogs included.\n");
@@ -60,7 +61,7 @@ void print_help() {
     printf("--no-flowers, -nf      Forces flowers off, for a minimalist look\n");
     printf("--intrepid-frogs, -i   Frogs won't get scared by key or mouse presses\n");
     printf("--all-the-frogs, -a    Gives you all the frogs. Overrides --frog-spawn\n");
-    printf("--debug                Shows debug information. S to step. Intrepid frogs on.\n");
+    printf("--debug                Enables debug menu. Forces intrepid frogs on.\n");
     printf("\n");
     printf("Tweaking options:\n");
     printf("[F] is a decimal number. Defaults to 1\n");
@@ -312,7 +313,8 @@ char* frog_croak = "\
 ( _^_ )";
 
 char* frog_swimming = "\n  omo";
-char* from_swimming_blinking = "\n  -m-";
+char* frog_swimming_blinking = "\n  -m-";
+char* frog_swimming_dbg = "\n   x";
 
 int frog_offset_y = 1;
 int frog_offset_x = 3;
@@ -437,9 +439,9 @@ void render_frog(WINDOW* win, char* str, int Y, int X, int center_y, int center_
                     startedRendering = true;
                 }
 
-                if (OPTION_DEBUG && x == X && y == Y) {
+                /*if (OPTION_DEBUG && x == X && y == Y) {
                     wattron(win, A_REVERSE);
-                }
+                }*/
 
                 if (!skip) {
                     if (str[i] == 'o') {
@@ -455,9 +457,9 @@ void render_frog(WINDOW* win, char* str, int Y, int X, int center_y, int center_
                     }
                 }
 
-                if (OPTION_DEBUG && x == X && y == Y) {
+                /*if (OPTION_DEBUG && x == X && y == Y) {
                     wattroff(win, A_REVERSE);
-                }
+                }*/
 
             }
             x ++;
@@ -531,7 +533,7 @@ void set_up_waterlilies(short terrain[LINES][COLS], struct WaterLily lily_pad_ar
 }
 
 short get_terrain(short terrain[LINES][COLS], int y, int x) {
-    if ((y < 0) || (y > LINES) || (x < 0) || (x > COLS)) {
+    if ((y < 0) || (y >= LINES) || (x < 0) || (x >= COLS)) {
         return WATER;
     }
 
@@ -572,6 +574,34 @@ short get_next_direction(short direction, bool reverse) {
     }
 }
 
+void direction_to_str(char* str, short direction) {
+    char* lr = "";
+    char* ud = "";
+
+    if ((direction & 0b11) == RIGHT)
+        lr = "RIGHT";
+    if ((direction & 0b11) == LEFT)
+        lr = "LEFT";
+    if ((direction & 0b1100) == UP)
+        ud = "UP";
+    if ((direction & 0b1100) == DOWN)
+        ud = "DOWN";
+
+    strcpy(str, lr);
+    strcat(str, ud);
+}
+
+// clip to one or minus one but that would make the name too long
+int float_to_int_clip_to_one(float a) {
+    int b;
+    // this feels needlessly complicated
+    if ((a < 1 && a > -1) && (a > 0.1 || a < -0.1)) {
+        b = a > 0 ? 1 : -1;
+    } else {
+        b = a;
+    }
+    return b;
+}
 
 // this can move a lot of other things than frogs, too!
 void frog_move(short direction, int distance_y, int distance_x, int* y, int* x) {
@@ -583,8 +613,11 @@ void frog_move(short direction, int distance_y, int distance_x, int* y, int* x) 
         y_direction_multiplier *= SIN_PI_OVER_4;
     }
 
-    *x += distance_x * x_direction_multiplier;
-    *y += distance_y * y_direction_multiplier;
+    int travel_x = float_to_int_clip_to_one(distance_x * x_direction_multiplier);
+    int travel_y = float_to_int_clip_to_one(distance_y * y_direction_multiplier);
+
+    *x += travel_x;
+    *y += travel_y;
 }
 
 short frog_predict_landing_tile(short terrain[LINES][COLS], short direction, int distance_y, int distance_x, int y, int x) {
@@ -674,6 +707,8 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                 }
                 if (!frog->in_water) { 
                     str_to_render = &ascii_frog;
+                } else if (OPTION_DEBUG) {
+                    str_to_render = &frog_swimming_dbg;
                 }
             } else {// non-jumping frog
                 frog->eye_wetness--;
@@ -694,13 +729,23 @@ void tick_frog(WINDOW* win, short terrain[LINES][COLS], struct Frog frog_array[]
                     str_to_render = frog->croak > 0 ? &frog_croak : blinking ? &frog_blink : &ascii_frog;
                 } else if (!(frog->waiting_for_new_jump > 0)) {
                     // if the frog is swimming, we don't display its cute eyes until it has stopped swimming (swimming = jumping when underwater
-                    str_to_render = blinking ? &from_swimming_blinking : &frog_swimming;
+                    str_to_render = blinking ? &frog_swimming_blinking : &frog_swimming;
+                } else if (OPTION_DEBUG) {
+                    // always render somthing in debug, to see what's up
+                    str_to_render = &frog_swimming_dbg;
                 }
             }
 
            
             wattron(win, A_BOLD | COLOR_PAIR(frog->color));
+
+            if (OPTION_DEBUG && i == SELECTED_FROG)
+                wattron(win, A_REVERSE);
+
             render_frog(win, *str_to_render, y, frog->x, frog_offset_y, frog_offset_x, false, frog->eyes, frog->mouth, frog->sides[0], frog->sides[1]);
+
+            if (OPTION_DEBUG && i == SELECTED_FROG)
+                wattroff(win, A_REVERSE);
             
         }
     }
@@ -758,15 +803,15 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 .swimminess = 3 + rand() % 20,
                 .urge_to_croak = croakiness,
                 .urge_to_jump = jumpiness,
-                .jumps_in_a_row = 2 + rand() % 4,
+                .jumps_in_a_row = 2 + rand() % 3,
                 .time_between_jumps = 2 + rand() % 6,
                 .jumping = 0,
-                .jump_distance_y = 1,
-                .jump_distance_x = 2,
+                .jump_distance_y = 2,
+                .jump_distance_x = 4,
                 .jump_height = 3,
                 .jumpiness = jumpiness,
                 .croak = 0,
-                .in_water = false,
+                .in_water = false, //reason is to not rush as soon as spawned
                 .stubborn = rand() % 4 == 0 ? false : true, // it is a well known fact that most frogs are stubborn
                 .loves_land = rand() % 2 == 0 ? true : false,
             };
@@ -969,15 +1014,48 @@ int main(int argc, char* argv[]) {
         //debug
         if (OPTION_DEBUG) {
             wattron(win, COLOR_PAIR(NORMAL));
-            wmove(win, 0, 0);
+            int y = 0;
+            wmove(win, y++, 0);
+            waddstr(win, "---- DEBUG MODE ----");
+            wmove(win, y++, 0);
+            waddstr(win, "'S': step by step mode");
+            wmove(win, y++, 0);
+            waddstr(win, "'I': frog info, I to cycle");
+            wmove(win, y++, 0);
             //doesn't work with 99+ frogs, whatever
             waddstr(win, "frogs: ");
             waddch(win, (frog_count / 10) + 0x30);
             waddch(win, (frog_count % 10) + 0x30);
             if (step_by_step) {
-                wmove(win, 1, 0);
-                waddstr(win, "press any key to step");
+                wmove(win, y++, 0);
+                waddstr(win, "press any key to step, S to resume");
             }
+            if (SELECTED_FROG != -1) {
+                if (is_frog_array_index_free[SELECTED_FROG] == true) {
+                    SELECTED_FROG = -1;
+                } else {
+                    struct Frog* frog = &frog_array[SELECTED_FROG];
+                    char dir_str[16];
+                    direction_to_str(dir_str, frog->direction);
+                    char coord_str[16];
+                    char jmp_str[16];
+                    char* inwater_str = frog->in_water ? "WATER" : "LAND";
+                    sprintf(coord_str, "Y: %d, X: %d", frog->y, frog->x);
+                    sprintf(jmp_str, "jmp: %d", frog->urge_to_jump);
+
+                    wmove(win, y++, 0);
+                    waddstr(win, "---- FROG INFO ----");
+                    wmove(win, y++, 0);
+                    waddstr(win, coord_str);
+                    wmove(win, y++, 0);
+                    waddstr(win, inwater_str);
+                    wmove(win, y++, 0);
+                    waddstr(win, dir_str);
+                    wmove(win, y++, 0);
+                    waddstr(win, jmp_str);
+                }
+            }
+            // wattroff(win, A_REVERSE);
         }
 
         wrefresh(win);
@@ -1018,6 +1096,20 @@ int main(int argc, char* argv[]) {
             quit = true;
         if (OPTION_DEBUG && (ch == 's' || ch == 'S')) {
             step_by_step = !step_by_step; 
+        }
+        if (OPTION_DEBUG && (ch == 'i' || ch == 'I')) {
+            SELECTED_FROG++;
+            bool found_frog = false;
+            for (int i = SELECTED_FROG; i < FROG_ARRAY_SIZE + SELECTED_FROG; i++) {
+                int index = i % FROG_ARRAY_SIZE;
+                if (is_frog_array_index_free[index] == false) {
+                    SELECTED_FROG = index;
+                    found_frog = true;
+                    break;
+                }
+            }
+            if (found_frog == false)
+                SELECTED_FROG = -1;
         }
         if (OPTION_DEBUG) {
             nodelay(stdscr, true);
