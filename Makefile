@@ -1,6 +1,6 @@
 make : pond.c
 	mkdir -p bin
-	gcc -Os pond.c -lcurses -o bin/pond
+	gcc -Wall -Os pond.c -lcurses -o bin/pond
 
 install: bin/pond
 	rm -f /usr/local/games/pond #old location

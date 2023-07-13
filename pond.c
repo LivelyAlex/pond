@@ -504,7 +504,7 @@ void set_up_waterlilies(short terrain[LINES][COLS], struct WaterLily lily_pad_ar
     for (int i = 0; i < n_waterlilies + n_lily_flowers; i++) {
         short color = GREEN; //rand() % 3 == 0 ? YELLOW : GREEN;
         int x, y;
-        int loop_count;
+        int loop_count = 0;
         do {
             loop_count++;
             y = rand() % LINES;
@@ -808,7 +808,7 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 .jumping = 0,
                 .jump_distance_y = 2,
                 .jump_distance_x = 4,
-                .jump_height = 3,
+                .jump_height = 5,
                 .jumpiness = jumpiness,
                 .croak = 0,
                 .in_water = false, //reason is to not rush as soon as spawned
@@ -856,6 +856,10 @@ void tick_frog_spawner(struct Frog frog_array[], bool is_index_free[], bool forc
                 y = LINES + DEATH_ZONE;
                 direction = UP;
                 break;
+	    default:
+		endwin();
+		printf("error: math is broken");
+		exit(-1);
         }
 
         int i = spawn_frog(frog_array, is_index_free, y, x, direction);
