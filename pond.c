@@ -808,7 +808,7 @@ int spawn_frog(struct Frog frogArray[], bool isIndexFree[], int y, int x, short 
                 .jumping = 0,
                 .jump_distance_y = 2,
                 .jump_distance_x = 4,
-                .jump_height = 5,
+                .jump_height = 3,
                 .jumpiness = jumpiness,
                 .croak = 0,
                 .in_water = false, //reason is to not rush as soon as spawned
