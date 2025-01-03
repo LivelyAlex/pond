@@ -35,6 +35,10 @@ pond # enjoy!
 
 If you don't want/can't `sudo`, you can also just run `make`, and run the program with `bin/pond`.
 
+- Nix:
+
+If you're using Nix, you're in luck ! Emil Harder has made a flake for pond: https://gitlab.com/Morgenkaff/flake-for-pond/
+
 - If you're on another OS, you're on your own, sorry.
 
 ## How to use pond??
