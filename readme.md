@@ -1,7 +1,6 @@
 # Run in docker
 ```bash
-docker pull ghcr.io/livelyalex/pond:latest
-docker run -it --rm pond
+docker run -it --rm ghcr.io/livelyalex/pond:latest
 ```
 All thanks should be sent to [original author](https://gitlab.com/alice-lefebvre/pond/), here is only docker-related changes, to make the process of running this app on non-linux systems easier.
 
