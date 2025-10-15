@@ -1,3 +1,10 @@
+# Run in docker
+```bash
+docker pull ghcr.io/livelyalex/pond:latest
+docker run -it --rm pond
+```
+All thanks should be sent to [original author](https://gitlab.com/alice-lefebvre/pond/), here is only docker-related changes, to make the process of running this app on non-linux systems easier.
+
 # Pond, a soothing in-terminal idle screen
 A software that simulates a little pond, complete with flowering lilypads and adorable little frogs jumping around.
 

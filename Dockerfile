@@ -1,16 +1,12 @@
-FROM debian AS build
+FROM alpine AS build
 WORKDIR /opt/pond
 COPY . .
-RUN apt-get update && \
-  apt-get install -y build-essential ncurses-dev && \
-  make && \
-  make install
-ENTRYPOINT ["/opt/pond/bin/pond"]
+RUN apk add --update alpine-sdk ncurses-dev && \
+  make
 
-FROM debian AS final
+FROM alpine AS final
 COPY --from=build /opt/pond/bin/pond /app/pond
-RUN apt-get update && \
-  apt-get install -y libncurses6 && \
-  apt-get clean
+RUN apk add --update --no-cache ncurses
+
 WORKDIR /app
 ENTRYPOINT ["/app/pond"]
